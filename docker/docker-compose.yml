@@ -1,0 +1,53 @@
+name: sportcomplex-net
+
+services:
+  migrate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    command: ["pnpm", "--filter", "@sportcomplex/db", "db:migrate"]
+    env_file:
+      - ../apps/web/.env
+    networks:
+      - sportcomplex-net
+    restart: "no"
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - ../apps/web/.env
+    environment:
+      TZ: America/Bogota
+    expose:
+      - "3000"
+    networks:
+      - sportcomplex-net
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    networks:
+      - sportcomplex-net
+    restart: unless-stopped
+
+networks:
+  sportcomplex-net:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

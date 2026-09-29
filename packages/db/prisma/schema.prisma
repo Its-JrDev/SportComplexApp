@@ -1,0 +1,162 @@
+// MER / DER físico — PostgreSQL/Supabase. Ver docs/MER_&_DER.md (pendiente ratificar).
+// Incluye: borrado lógico empleados (RN-10), TTL 15 min, QR HMAC, HolidayCache fallback Nager,
+// aforo vs exclusividad, idempotencia Stripe, webhook n8n.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  Administrador
+  Empleado_Vendedor
+  Empleado_Lector
+  Cliente
+}
+
+enum AccountStatus {
+  Pendiente
+  Activo
+  Inactivo
+  Temporalmente_Inactivo
+}
+
+enum BookingStatus {
+  BLOQUEADA_TTL
+  CONFIRMADA
+  CANCELADA_ADMINISTRATIVA
+}
+
+enum TicketStatus {
+  EMITIDO
+  USADO
+}
+
+enum MembershipStatus {
+  VIGENTE
+  VENCIDA
+  CANCELADA
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String?
+  googleId     String?       @unique
+  role         Role          @default(Cliente)
+  status       AccountStatus @default(Pendiente)
+  createdAt    DateTime      @default(now())
+  bookings     Booking[]
+  memberships  Membership[]
+  verifyTokens VerifyToken[]
+}
+
+model VerifyToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  services Service[]
+}
+
+model Service {
+  id          String   @id @default(uuid())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  name        String   @unique
+  capacity    Int // aforo concurrente; 1 = exclusiva
+  isPool      Boolean  @default(false)
+  modality    String? // Publica | Privada (solo piscinas, RF-07)
+  isDisabled  Boolean  @default(false)
+  slots       Slot[]
+  bookings    Booking[]
+
+  @@index([categoryId])
+}
+
+model Slot {
+  id        String   @id @default(uuid())
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  startTime DateTime
+  endTime   DateTime
+  capacity  Int
+  blocked   Boolean  @default(false)
+  reason    String?
+
+  @@unique([serviceId, date, startTime])
+  @@index([serviceId, date])
+}
+
+model Booking {
+  id            String        @id @default(uuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  serviceId     String
+  service       Service       @relation(fields: [serviceId], references: [id])
+  startTime     DateTime
+  endTime       DateTime
+  status        BookingStatus @default(BLOQUEADA_TTL)
+  lockedUntil   DateTime?
+  amountCents   Int
+  discountCents Int           @default(0)
+  stripePiId    String?       @unique
+  createdAt     DateTime      @default(now())
+  tickets       Ticket[]
+
+  @@index([serviceId, startTime])
+  @@index([userId, status])
+}
+
+model Ticket {
+  id         String       @id @default(uuid()) // UUIDv4 codificado en QR + HMAC
+  bookingId  String
+  booking    Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  status     TicketStatus @default(EMITIDO)
+  usedAt     DateTime?
+  scannedBy  String?
+  createdAt  DateTime     @default(now())
+
+  @@index([bookingId])
+}
+
+model Membership {
+  id               String           @id @default(uuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan             String // Semanal | Mensual | Anual
+  status           MembershipStatus @default(VIGENTE)
+  stripeSubId      String?          @unique
+  currentPeriodEnd DateTime
+  createdAt        DateTime         @default(now())
+
+  @@index([userId, status])
+}
+
+model HolidayCache {
+  date      DateTime @id @db.Date
+  name      String
+  isHoliday Boolean  @default(true)
+  syncedAt  DateTime @default(now())
+}
+
+model StripeEvent {
+  eventId     String   @id
+  type        String
+  processedAt DateTime @default(now())
+}
