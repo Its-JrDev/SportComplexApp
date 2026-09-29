@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+:root {
+  --tz-canonical: "America/Bogota";
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .ticket-receipt {
+    box-shadow: none !important;
+    margin: 0 auto;
+  }
+}

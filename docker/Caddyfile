@@ -1,0 +1,8 @@
+# ARCHITECTURE §7.3 — Caddy edge SSL auto (Let's Encrypt) → web:3000
+{
+  email {$ACME_EMAIL:admin@example.com}
+}
+
+{$DOMAIN:sportcomplex.example.com} {
+  reverse_proxy web:3000
+}
