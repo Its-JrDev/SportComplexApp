@@ -1,23 +1,32 @@
 # Módulo de Base de Datos (`packages/db`)
 
-Este paquete centraliza la gestión de la base de datos utilizando **Prisma ORM** y **PostgreSQL** para todo el sistema SportComplex / SportCenter.
+Este paquete centraliza la gestión de la base de datos utilizando **Prisma ORM** y **PostgreSQL** para todo el sistema SportComplex.
 
 ---
 
-## 🛠️ Lo que se ha implementado en este módulo
+## 🛠️ Lo que se ha implementado en este módulo (TSK-BD-06)
 
 1. **Definición del Esquema (`prisma/schema.prisma`)**:
-   - Modelado relacional completo con **16 tablas** y enums de dominio robustos (Estados de usuario, categorías de servicio, modalidades de reserva, pagos, membresías, control de accesos, etc.).
-2. **Configuración de Prisma & Cliente**:
-   - Configuración centralizada mediante `prisma.config.ts` y exportación de instancias optimizadas de `PrismaClient` en `src/client.ts`.
-3. **Migraciones y Control de Versiones**:
-   - Migración inicial (`init_sport_complex`) estructurada para desplegar la estructura base en PostgreSQL.
-4. **Repositorios de Datos**:
-   - Estructura modular para lógica de acceso a datos (ej. repositorios de reservas en `src/repositories/bookings.ts`).
+   - Modelado relacional completo con las **16 tablas** del DER: `ROL`, `USUARIO`, `TOKEN_VERIFICACION`, `CATEGORIA_SERVICIO`, `SERVICIO`, `FRANJA_HORARIA`, `DISPONIBILIDAD`, `FESTIVO`, `RESERVA`, `PAGO`, `TICKET_QR`, `ASIGNACION_PUESTO`, `LECTURA_ACCESO`, `PLAN_MEMBRESIA`, `MEMBRESIA`, `INHABILITACION_SERVICIO`.
+   - Enums de dominio robustos (Estados de usuario, categorías de servicio, modalidades de reserva, pagos, membresías, control de accesos, etc.).
+
+2. **Constraints de Integridad y Validación (`CHECK` & `UNIQUE`)**:
+   - `CHECK (capacidad_maxima > 0)` en `servicio`.
+   - `CHECK (hora_fin > hora_inicio)` en `franja_horaria`.
+   - `CHECK (cupos_ocupados BETWEEN 0 AND cupos_totales)` en `disponibilidad`.
+   - Constraints `UNIQUE` en: `(servicio_id, franja_id, fecha)` (Disponibilidad), `correo`, `google_sub`, `codigo_uuid` y `reserva_id`.
+   - Índices base del DER §5.
+
+3. **Sistema de Semillas (`prisma/seed.ts`)**:
+   - Poblamiento automático de **Roles (`ROL`)**: `ADMIN`, `VENDEDOR`, `LECTOR`, `CLIENTE`.
+   - Catálogo inicial de **Planes de Membresía (`PLAN_MEMBRESIA`)**: Planes configurados con `descuento_pct = 30.00`.
+
+4. **Configuración de Prisma & Cliente**:
+   - Configuración centralizada mediante `prisma.config.ts` y exportación de instancias optimizadas con adaptador PostgreSQL en `src/client.ts`.
 
 ---
 
-## 📋 Guía de Uso e Indicaciones para el Equipo
+## 📋 Guía de Uso e Indicaciones para el Equipo (Partners)
 
 ### 1. Variables de Entorno (`.env`)
 Crea un archivo `.env` dentro de `packages/db/` basado en la siguiente estructura:
@@ -29,27 +38,34 @@ DIRECT_URL="postgresql://usuario:contraseña@host-directo:5432/nombre_db"
 
 ---
 
-### 2. Importante: Uso de `DATABASE_URL` (Pooler / Base URL) vs `DIRECT_URL`
+### 2. Importante: Uso de `DATABASE_URL` (Pooler) vs `DIRECT_URL` (Directo)
 
-Al configurar tu conexión a PostgreSQL (especialmente en proveedores como Supabase, Neon o RDS), notarás que existen dos URLs distintas. **Es obligatorio seguir estas pautas de uso:**
+Al configurar tu conexión a PostgreSQL (en proveedores como Supabase, Neon o RDS), existen dos URLs distintas. **Es obligatorio seguir estas pautas:**
 
 #### 🚀 Usar `DATABASE_URL` para la Aplicación y Consultas (Runtime)
-- **Qué es:** Es la URL que conecta a través de un **Connection Pooler** (ej. Supabase Pooler en modo Transaction o Session).
-- **Por qué usarla en lugar de la conexión directa:**
-  1. **Control de Conexiones Concurrentes:** Las aplicaciones modernas generan múltiples solicitudes y conexiones simultáneas. Si cada instancia o consulta abre una conexión directa al servidor de base de datos, se agotará rápidamente el límite máximo de conexiones permitidas por PostgreSQL, arrojando errores críticos de `too many connections`.
-  2. **Reutilización y Rendimiento:** El Pooler gestiona una reserva (pool) de conexiones activas y las reutiliza eficientemente entre las peticiones de los usuarios, mejorando la latencia y la estabilidad del servidor.
-  3. **Escalabilidad:** Es indispensable para arquitecturas serverless o contenedores distribuidos donde el número de clientes fluctuantes puede dispararse.
+- **Qué es:** Conecta a través de un **Connection Pooler** (ej. Supabase Pooler en modo Transaction o Session).
+- **Por qué usarla:** Evita agotar el límite máximo de conexiones concurrentes permitidas por PostgreSQL (`too many connections`), reutilizando un pool eficiente de conexiones entre peticiones concurrentes.
+- **Uso:** Todo el código de la aplicación y repositorios deben utilizar esta URL.
 
-#### ⚙️ Usar `DIRECT_URL` Exclusivamente para Migraciones e Introspección
-- **Qué es:** Es la conexión directa y sin intermediarios al servidor de base de datos principal.
-- **Cuándo usarla:** Solo se debe configurar en `prisma.config.ts` o comandos CLI para ejecutar operaciones DDL y migraciones de esquema (`prisma migrate dev` o `prisma migrate deploy`).
-- **Por qué no usarla en la app:** Las migraciones de base de datos requieren bloqueos de esquema, transacciones preparadas y características a nivel de sesión que los connection poolers (en modo transacción) pueden rechazar o corromper. Por ello, Prisma separa el canal de migración (`directUrl`) del canal de consultas de la aplicación (`url`).
+#### ⚙️ Usar `DIRECT_URL` Exclusivamente para Migraciones
+- **Qué es:** Conexión directa y sin intermediarios al servidor de base de datos principal.
+- **Cuándo usarla:** Configurada en `prisma.config.ts` exclusivamente para ejecutar operaciones DDL y migraciones de esquema (`prisma migrate dev` o `prisma migrate deploy`).
+- **Por qué:** Las migraciones requieren bloqueos de esquema y transacciones a nivel de sesión que los connection poolers en modo transacción rechazan.
 
 ---
 
-### 3. Comandos Principales
+### 3. Sistema de Seeds (`prisma/seed.ts`)
 
-Ejecuta estos comandos desde la raíz del proyecto o filtrando por paquete:
+Para poblar la base de datos con los roles institucionales y el catálogo inicial de planes con 30% de descuento:
+```bash
+pnpm --filter @sportcomplex/db db:seed
+```
+
+---
+
+### 4. Comandos Principales
+
+Ejecuta estos comandos desde la raíz del monorepo o filtrando por paquete:
 
 - **Generar cliente de Prisma:**
   ```bash
@@ -59,9 +75,13 @@ Ejecuta estos comandos desde la raíz del proyecto o filtrando por paquete:
   ```bash
   pnpm --filter @sportcomplex/db db:migrate
   ```
-- **Desplegar migraciones en producción:**
+- **Desplegar migraciones en producción / CI:**
   ```bash
   pnpm --filter @sportcomplex/db db:migrate:deploy
+  ```
+- **Poblar datos iniciales (Seeds):**
+  ```bash
+  pnpm --filter @sportcomplex/db db:seed
   ```
 - **Abrir Prisma Studio (Interfaz visual de BD):**
   ```bash
