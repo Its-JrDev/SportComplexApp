@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "pnpm --filter @sportcomplex/db db:generate && next build",
     "start": "next start",
-    "lint": "echo \"lint web (todo)\"",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -36,6 +36,7 @@
     "@types/node": "22.13.10",
     "@types/react": "19.0.10",
     "tailwindcss": "4.3.3",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "@sportcomplex/config": "workspace:*"
   }
 }
