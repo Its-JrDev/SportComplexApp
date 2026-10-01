@@ -16,14 +16,18 @@
     "lint": "echo \"lint db (todo)\"",
     "clean": "rm -rf dist"
   },
-  "prisma":{
+  "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "7.10.0"
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "7.10.0",
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "prisma": "7.10.0",
+    "tsx": "^4.23.15",
     "typescript": "5.7.3"
   }
 }
