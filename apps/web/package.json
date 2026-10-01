@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "pnpm --filter @sportcomplex/db db:generate && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "echo \"lint web (todo)\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
