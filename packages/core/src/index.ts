@@ -4,3 +4,4 @@ export * from "./services/availability.js";
 export * from "./services/pool-policy.js";
 export * from "./services/access-control.js";
 export * from "./security/qr.js";
+export * from "./security/token.js";
