@@ -1,5 +1,4 @@
-import { BOOKING_WINDOW_DAYS } from "../domain/index.js";
-
+import { BOOKING_WINDOW_DAYS } from "../domain/index";
 // RN-01 ventana 15 días + RN-11 prohibición de pasado. Todo en America/Bogota.
 export function isWithinBookingWindow(now: Date, start: Date): boolean {
   const msPerDay = 24 * 60 * 60 * 1000;

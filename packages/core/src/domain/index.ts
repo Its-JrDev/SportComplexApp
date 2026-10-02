@@ -16,3 +16,10 @@ export const TIMEZONE = "America/Bogota" as const;
 export const BOOKING_WINDOW_DAYS = 15 as const;
 export const CHECKOUT_TTL_MINUTES = 15 as const;
 export const MEMBERSHIP_DISCOUNT_RATE = 0.3 as const;
+
+export const roleHome: Record<Role, string> = {
+  Administrador: '/admin/dashboard',
+  Empleado_Vendedor: '/pos',
+  Empleado_Lector: '/scanner',
+  Cliente: '/portal',
+};

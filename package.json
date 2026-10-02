@@ -2,7 +2,12 @@
   "name": "sportcomplex-monorepo",
   "version": "0.1.0",
   "private": true,
-  "pnpm": { "onlyBuiltDependencies": [ "prisma", "@prisma/engines" ] },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "prisma",
+      "@prisma/engines"
+    ]
+  },
   "description": "Plataforma de Gestión de Reservas, Venta y Control de Acceso Deportivo (SportComplex) — Monorepo Turborepo + pnpm",
   "packageManager": "pnpm@12.6.0",
   "engines": {
@@ -19,10 +24,13 @@
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
+    "eslint": "10.11.0",
+    "eslint-plugin-react-hooks": "7.1.1",
     "turbo": "2.11.4",
     "typescript": "5.7.3",
-    "eslint": "10.11.0",
-    "typescript-eslint": "8.71.0",
-    "eslint-plugin-react-hooks": "7.1.1"
+    "typescript-eslint": "8.71.0"
+  },
+  "dependencies": {
+    "lucide-react": "^1.50.0"
   }
 }

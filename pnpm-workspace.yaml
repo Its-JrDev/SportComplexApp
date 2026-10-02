@@ -8,3 +8,4 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - pg-protocol@1.16.1
   - pg@8.23.1
+  - lucide-react@1.50.0
