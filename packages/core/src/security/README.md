@@ -56,3 +56,24 @@ if (!valid) throw new InvalidCodeError();
 - `verifySecret` usa comparación en tiempo constante internamente (vía `@node-rs/argon2`)
 - Rate limit validado contra `creado_en` del token más reciente, no contra reloj de pared
 - Generación de código usa `crypto.randomInt` (CSPRNG)
+
+## `rate-limit.ts` — Limitador de Tasa en Memoria
+
+### Propósito
+Mitiga fuerza bruta del código de 6 dígitos (1M combinaciones) y DoS por CPU
+de Argon2id en `POST /api/auth/verify`, sin requerir migración de BD.
+
+### Exportaciones
+| Función | Descripción |
+|---------|-------------|
+| `consumeRateLimit(key, limit, windowMs, now?)` | Consume 1 intento; retorna `{ allowed, remaining, retryAfterSeconds }`. Ventana deslizante con reinicio al expirar. Poda oportunista de entradas vencidas (máx 10.000). |
+| `resetRateLimit(key)` | Reinicia el presupuesto (ej. tras verificación exitosa). |
+| `rateLimitSize()` | Cantidad de presupuestos rastreados (diagnóstico). |
+
+### Composición en `verify`
+1. **Por usuario** — `verify:<usuarioId>`, 5 intentos por vida del token (ventana = `expiraEn - creadoEn`). Al exceder: `markUsed(token)` + `429 TOKEN_LOCKED`.
+2. **Por IP** — `verify:ip:<ip>`, 30 req/min → `429 RATE_LIMITED` (defensa directa contra agotamiento de CPU).
+3. Cada token nuevo cuesta 60 s de cooldown (reenvío) ⇒ cota de ~75 hashes Argon2id por usuario cada 15 min.
+
+### Limitación conocida
+Estado por instancia del proceso: con >1 réplica el límite efectivo se multiplica, y el conteo se pierde al reiniciar. Aceptado para F0 por decisión del equipo; para rate limiting distribuido se requeriría un almacén compartido (Redis), fuera de alcance.

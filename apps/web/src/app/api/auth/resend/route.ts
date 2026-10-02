@@ -1,8 +1,7 @@
 import { fail, ok } from "@/lib/api-response";
 import { resendSchema } from "@sportcomplex/validation";
-import { hashSecret, generateVerificationCode, TOKEN_TTL_MS, isResendAllowed } from "@sportcomplex/core";
-import { prisma } from "@sportcomplex/db";
-import { createToken, findLatestByUsuarioId } from "@sportcomplex/db";
+import { hashSecret, generateVerificationCode, TOKEN_TTL_MS, isResendAllowed, sendVerificationCodeEmail } from "@sportcomplex/core";
+import { prisma, createToken, findLatestByUsuarioId, markUsed } from "@sportcomplex/db";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
@@ -37,13 +36,13 @@ export async function POST(request: Request) {
   const expiraEn = new Date(Date.now() + TOKEN_TTL_MS);
 
   if (latestToken) {
-    await prisma.tokenVerificacion.update({
-      where: { id: latestToken.id },
-      data: { usadoEn: new Date() },
-    });
+    await markUsed(latestToken.id);
   }
 
   await createToken(usuario.id, tokenHash, expiraEn);
+
+  // El código en claro nunca se persiste; se envía al webhook de correo (TSK-AU-01).
+  await sendVerificationCodeEmail({ to: email, nombre: usuario.nombre, code, expiraEn });
 
   return ok({
     message: "Código reenviado. Verifica tu correo con el código de 6 dígitos.",

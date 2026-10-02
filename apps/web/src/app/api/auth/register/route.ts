@@ -1,8 +1,7 @@
 import { fail, ok } from "@/lib/api-response";
 import { registerSchema } from "@sportcomplex/validation";
-import { hashSecret, generateVerificationCode, TOKEN_TTL_MS } from "@sportcomplex/core";
-import { prisma } from "@sportcomplex/db";
-import { createToken } from "@sportcomplex/db";
+import { hashSecret, generateVerificationCode, TOKEN_TTL_MS, sendVerificationCodeEmail } from "@sportcomplex/core";
+import { prisma, createToken } from "@sportcomplex/db";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
@@ -41,6 +40,9 @@ export async function POST(request: Request) {
   const expiraEn = new Date(Date.now() + TOKEN_TTL_MS);
 
   await createToken(usuario.id, tokenHash, expiraEn);
+
+  // El código en claro nunca se persiste; se envía al webhook de correo (TSK-AU-01).
+  await sendVerificationCodeEmail({ to: email, nombre, code, expiraEn });
 
   return ok({
     usuarioId: usuario.id,
